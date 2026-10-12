@@ -1103,6 +1103,9 @@ enum IncomingFrameCommand {
     ParticipantStateNotEmpty(u64, bool),
 }
 
+// Android has no EVS codec, so only AAC (payload 104, 24kHz) is negotiated and sent
+pub const MIC_PAYLOAD: u8 = 104;
+
 pub struct AudioParser<'t>(pub &'t [u8]);
 
 impl<'t> Iterator for AudioParser<'t> {
@@ -3796,7 +3799,7 @@ impl AudioSender {
                 padding: false,
                 extension: self.is_u1,
                 marker: self.is_first,
-                payload_type: 108,
+                payload_type: MIC_PAYLOAD,
                 sequence_number: self.sequence_number,
                 timestamp,
                 ssrc: self.ssrc,
