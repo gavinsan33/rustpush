@@ -1387,7 +1387,11 @@ impl RecvStatTracker {
                 },
                 AVSessionPayload::Aac | AVSessionPayload::Aac48 | AVSessionPayload::Evs | AVSessionPayload::Red => {
                     let data = FTAudioControlData::from_ext(header.extension_profile, header.extensions[0].payload.to_vec());
-                    // info!("Audio data {data:?}");
+                    // the peer's view of OUR stream (total_kb_recv, our audio packets it got); ~1/s
+                    static PEER_AFRC_LOG: AtomicU32 = AtomicU32::new(0);
+                    if PEER_AFRC_LOG.fetch_add(1, Ordering::Relaxed) % 50 == 0 {
+                        info!("Peer AFRC {data:?}");
+                    }
                     if let Some(time) = data.current_send_timestamp {
                         self.stats.last_feedback.store(time, Ordering::Relaxed);
                         self.stats.last_feedback_time.store(duration_since_epoch().as_millis() as u64, Ordering::Relaxed);
@@ -3460,7 +3464,9 @@ impl VideoSender {
                                 // ("RVRA1", build_rvra1(self.width, self.height).to_vec()),
                                 ("CH1", vec![0x00, 0x00]),
                                 ("CR", vec![0x65, 0x43, 0x00, 0x00]),
-                                ("FA", vec![0x3e, 0x3e, 0xc0, 0xc0]),
+                                // foveation area: whole frame, as iPhones send without a face; the old
+                                // centre square (3e 3e c0 c0) left receivers smearing the edges
+                                ("FA", vec![0x00, 0x00, 0xff, 0xff]),
 
                                 ("SW", build_sw(0, 0, self.width, self.height)),
                             ]));
