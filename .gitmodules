@@ -1,9 +1,9 @@
 [submodule "apple-private-apis"]
 	path = third_party/apple-private-apis
-	url = git@github.com:OpenBubbles/apple-private-apis.git
+	url = https://github.com/gavinsan33/apple-private-apis.git
 [submodule "open-absinthe"]
 	path = open-absinthe
-	url = git@github.com:OpenBubbles/OpenAbsinthe-Stub.git
+	url = https://github.com/OpenBubbles/OpenAbsinthe-Stub.git
 [submodule "third_party/rtc"]
 	path = third_party/rtc
 	url = https://github.com/OpenBubbles/rtc.git
