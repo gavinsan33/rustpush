@@ -3463,7 +3463,9 @@ impl VideoSender {
                             self.enabled_features.add_footer(&mut nal, HashMap::from_iter([
                                 // ("RVRA1", build_rvra1(self.width, self.height).to_vec()),
                                 ("CH1", vec![0x00, 0x00]),
-                                ("CR", vec![0x65, 0x43, 0x00, 0x00]),
+                                // no CR: iPhones send 65 43 00 00 for their own camera, but on our frames
+                                // it made receivers draw us as a ~4:3 band with smeared edges (confirmed
+                                // fixed by omitting it). Absent fields just leave their marker bit clear.
                                 // foveation area: whole frame, as iPhones send without a face; the old
                                 // centre square (3e 3e c0 c0) left receivers smearing the edges
                                 ("FA", vec![0x00, 0x00, 0xff, 0xff]),
