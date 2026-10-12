@@ -3865,6 +3865,8 @@ pub struct AVSession {
 
     ssrc_packet_buffer: std::sync::Mutex<HashMap<u32, Arc<std::sync::Mutex<AVChannelHistory>>>>,
     u1: AtomicBool,
+    // control messages that beat the sender's AVC blob; replayed by import_avc instead of dropped
+    pending_control: std::sync::Mutex<HashMap<u64, Vec<GlobalPacket>>>,
 }
 
 impl AVSession {
@@ -3919,6 +3921,7 @@ impl AVSession {
             outgoing_control: manage_control(Arc::downgrade(&relay_session)),
 
             ssrc_packet_buffer: Default::default(),
+            pending_control: Default::default(),
 
             // will automatically upgrade to u1 if we end up being the only person in a 3-way call
             u1: AtomicBool::new(participants.len() <= 2),
@@ -4264,6 +4267,13 @@ impl AVSession {
         self.frame_handler.handle_keys(state.get_media_config(p, &self.av_config), false);
 
         drop(state);
+        let pending = self.pending_control.lock().unwrap().remove(&p).unwrap_or_default();
+        if !pending.is_empty() {
+            info!("Replaying {} control messages from {p}", pending.len());
+        }
+        for packet in pending {
+            let _ = self.frame_handler.target_control.try_send(AVInternalMessage::SFrame(packet));
+        }
         self.update_subscribed_streams().await?;
         Ok(())
     }
@@ -4608,7 +4618,14 @@ impl AVSession {
                 };
 
                 let Some(their) = lock.participant_session_ids.get(&(id as u64)) else {
-                    warn!("Dropping control message with no AVC blob ID! {id}");
+                    let mut pending = self.pending_control.lock().unwrap();
+                    let queue = pending.entry(id as u64).or_default();
+                    if queue.len() < 64 {
+                        warn!("Holding control message until AVC blob arrives {id}");
+                        queue.push(sframe);
+                    } else {
+                        warn!("Dropping control message with no AVC blob ID! {id}");
+                    }
                     return Ok(())
                 };
                 
