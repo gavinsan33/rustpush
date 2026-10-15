@@ -1103,7 +1103,7 @@ enum IncomingFrameCommand {
     ParticipantStateNotEmpty(u64, bool),
 }
 
-// Android has no EVS codec, so only AAC (payload 104, 24kHz) is negotiated and sent
+// Android has no EVS encoder, so we send AAC (payload 104, 24kHz). Peers may still send us EVS
 pub const MIC_PAYLOAD: u8 = 104;
 
 pub struct AudioParser<'t>(pub &'t [u8]);
@@ -5741,6 +5741,9 @@ impl AVConfig {
                 (2, AVStreamGroupConfig::new(
                     VcMediaNegotiationBlobV2StreamGroup {
                         stream_group: Some(2),
+                        // EVS has to stay offered: dropping it here, or its microphone_u1 flag,
+                        // made iOS 26 hang up on join. Peers on a lossy link do switch to it (and
+                        // ignore this order), so the app decodes it.
                         payloads: vec![
                             VcMediaNegotiationBlobV2StreamGroupPayload { rtp_payload: Some(108), ..Default::default() },
                             VcMediaNegotiationBlobV2StreamGroupPayload { rtp_payload: Some(13), ..Default::default() },
@@ -5923,7 +5926,7 @@ impl AVConfig {
                 // flag 4  -> payload 13   DTX/CN
                 // flag 8  -> payload 20   side/aux
                 // flag 64 -> payload 101
-                // default 0b1111
+                // default 0b1111. Clearing the EVS bit made iOS 26 hang up on join
                 payloads: Some(0b1111),
                 cipher_suites: Some(5),
             }),
